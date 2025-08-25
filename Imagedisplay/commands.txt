@@ -1,0 +1,3 @@
+
+py manage.py makemigrations members
+py manage.py migrate

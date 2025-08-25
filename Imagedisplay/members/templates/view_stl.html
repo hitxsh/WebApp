@@ -1,0 +1,281 @@
+<!-- <!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>STL Viewer</title>
+    <style>
+        body { 
+            margin: 0; 
+            font-family: Arial, sans-serif; 
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        h1, h2 {
+            color: #333;
+        }
+        .metrics {
+            background-color: #fff;
+            border-radius: 5px;
+            padding: 15px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .metrics ul {
+            list-style-type: none;
+            padding: 0;
+        }
+        .metrics li {
+            margin-bottom: 8px;
+            padding-left: 20px;
+            position: relative;
+        }
+        .metrics li:before {
+            content: "•";
+            position: absolute;
+            left: 0;
+            color: #4285f4;
+        }
+        #stl-viewer {
+            width: 100%;
+            height: 500px;
+            background-color: #e9e9e9;
+            border-radius: 5px;
+            overflow: hidden;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>STL Viewer</h1>
+        
+        {% if metrics %}
+        <div class="metrics">
+            <h2>Mesh Metrics</h2>
+            <ul>
+                {% if metrics.volume %}<li>Volume: {{ metrics.volume }}</li>{% endif %}
+                {% if metrics.surface_area %}<li>Surface Area: {{ metrics.surface_area }}</li>{% endif %}
+                {% if metrics.number_of_faces %}<li>Faces: {{ metrics.number_of_faces }}</li>{% endif %}
+                {% if metrics.number_of_vertices %}<li>Vertices: {{ metrics.number_of_vertices }}</li>{% endif %}
+                {% if metrics.error %}<li>Error: {{ metrics.error }}</li>{% endif %}
+            </ul>
+        </div>
+        {% endif %}
+        
+        <div id="stl-viewer"></div>
+    </div>
+
+    <script type="module">
+        import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.1/build/three.module.js';
+        import { STLLoader } from 'https://cdn.jsdelivr.net/npm/three@0.160.1/examples/jsm/loaders/STLLoader.js';
+        import { OrbitControls } from 'https://cdn.jsdelivr.net/npm/three@0.160.1/examples/jsm/controls/OrbitControls.js';
+
+        // Initialize the viewer
+        function initViewer() {
+            const container = document.getElementById('stl-viewer');
+            
+            // Create scene
+            const scene = new THREE.Scene();
+            scene.background = new THREE.Color(0xf0f0f0);
+            
+            // Create camera
+            const camera = new THREE.PerspectiveCamera(
+                75,
+                container.clientWidth / container.clientHeight,
+                0.1,
+                1000
+            );
+            camera.position.set(0, 0, 10);
+            
+            // Create renderer
+            const renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(container.clientWidth, container.clientHeight);
+            container.appendChild(renderer.domElement);
+            
+            // Add lights
+            const ambientLight = new THREE.AmbientLight(0x404040, 1.5);
+            scene.add(ambientLight);
+            
+            const directionalLight1 = new THREE.DirectionalLight(0xffffff, 1);
+            directionalLight1.position.set(1, 1, 1);
+            scene.add(directionalLight1);
+            
+            const directionalLight2 = new THREE.DirectionalLight(0xffffff, 1);
+            directionalLight2.position.set(-1, -1, -1);
+            scene.add(directionalLight2);
+            
+            // Add orbit controls
+            const controls = new OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.25;
+            
+            // Load STL file
+            const loader = new STLLoader();
+            loader.load('{{ stl_url }}', function(geometry) {
+                // Center the geometry
+                geometry.center();
+                
+                // Create material
+                const material = new THREE.MeshPhongMaterial({
+                    color: 0x2194ce,
+                    specular: 0x111111,
+                    shininess: 200
+                });
+                
+                // Create mesh
+                const mesh = new THREE.Mesh(geometry, material);
+                scene.add(mesh);
+                
+                // Add wireframe for better visualization
+                const wireframe = new THREE.WireframeGeometry(geometry);
+                const line = new THREE.LineSegments(wireframe);
+                line.material.color.setHex(0x000000);
+                line.material.opacity = 0.25;
+                line.material.transparent = true;
+                scene.add(line);
+                
+                // Calculate bounding box to position camera
+                const boundingBox = new THREE.Box3().setFromObject(mesh);
+                const center = boundingBox.getCenter(new THREE.Vector3());
+                const size = boundingBox.getSize(new THREE.Vector3());
+                
+                // Position camera to fit the model
+                const maxDim = Math.max(size.x, size.y, size.z);
+                const fov = camera.fov * (Math.PI / 180);
+                let cameraZ = Math.abs(maxDim / Math.sin(fov / 2));
+                
+                // Set camera position
+                camera.position.set(center.x, center.y, center.z + cameraZ * 1.5);
+                
+                // Update the orbit controls target
+                controls.target.set(center.x, center.y, center.z);
+                controls.update();
+            }, 
+            // Progress callback
+            function(xhr) {
+                console.log((xhr.loaded / xhr.total * 100) + '% loaded');
+            },
+            // Error callback
+            function(error) {
+                console.error('Error loading STL:', error);
+                container.innerHTML = '<div style="color: red; padding: 20px;">Error loading STL file. Please check the file path.</div>';
+            });
+            
+            // Animation loop
+            function animate() {
+                requestAnimationFrame(animate);
+                controls.update();
+                renderer.render(scene, camera);
+            }
+            animate();
+            
+            // Handle window resize
+            window.addEventListener('resize', function() {
+                camera.aspect = container.clientWidth / container.clientHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(container.clientWidth, container.clientHeight);
+            });
+        }
+        
+        // Initialize the viewer when the page loads
+        window.addEventListener('DOMContentLoaded', initViewer);
+    </script>
+</body>
+</html> -->
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>STL Viewer</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            margin-top: 0;
+        }
+        .metrics {
+            margin-bottom: 20px;
+            padding: 15px;
+            background-color: #f9f9f9;
+            border-radius: 4px;
+        }
+        .metrics ul {
+            list-style-type: none;
+            padding-left: 20px;
+            margin: 0;
+        }
+        .metrics li {
+            margin-bottom: 8px;
+            position: relative;
+        }
+        .metrics li:before {
+            content: "•";
+            position: absolute;
+            left: -15px;
+            color: #4285f4;
+        }
+        .view-button {
+            display: inline-block;
+            background-color: #4285f4;
+            color: white;
+            padding: 10px 20px;
+            text-decoration: none;
+            border-radius: 4px;
+            font-weight: bold;
+            margin-top: 20px;
+        }
+        .view-button:hover {
+            background-color: #3367d6;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>STL Viewer</h1>
+        
+        <div class="file-info">
+            <p><strong>File:</strong> {{ stl_filename }}</p>
+        </div>
+        
+        {% if metrics %}
+        <div class="metrics">
+            <h2>Mesh Metrics</h2>
+            <ul>
+                {% if metrics.volume %}<li>Volume: {{ metrics.volume }}</li>{% endif %}
+                {% if metrics.surface_area %}<li>Surface Area: {{ metrics.surface_area }}</li>{% endif %}
+                {% if metrics.number_of_faces %}<li>Faces: {{ metrics.number_of_faces }}</li>{% endif %}
+                {% if metrics.number_of_vertices %}<li>Vertices: {{ metrics.number_of_vertices }}</li>{% endif %}
+                {% if metrics.error %}<li>Error: {{ metrics.error }}</li>{% endif %}
+            </ul>
+        </div>
+        {% endif %}
+        
+        {% if html_url %}
+            <p>Click the button below to open an interactive 3D viewer in a new tab:</p>
+            <a href="{{ html_url }}" class="view-button" target="_blank" rel="noopener">Open 3D Viewer</a>
+        {% else %}
+            <p>No 3D viewer available for this file.</p>
+        {% endif %}
+    </div>
+</body>
+</html>

@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>STL Viewer</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        
+        .container {
+            background-color: white;
+            border-radius: 8px;
+            padding: 30px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        h1 {
+            color: #2c3e50;
+            margin-top: 0;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 10px;
+        }
+        
+        .upload-form {
+            margin-bottom: 30px;
+        }
+        
+        .form-group {
+            margin-bottom: 15px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        
+        input[type="file"] {
+            border: 1px solid #ddd;
+            padding: 8px;
+            width: 100%;
+            border-radius: 4px;
+        }
+        
+        button {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s;
+        }
+        
+        button:hover {
+            background-color: #2980b9;
+        }
+        
+        .metrics-container {
+            background-color: #f9f9f9;
+            border-left: 4px solid #3498db;
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 0 4px 4px 0;
+        }
+        
+        .metrics-title {
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #2c3e50;
+        }
+        
+        .metrics-list {
+            list-style-type: none;
+            padding: 0;
+            margin: 0;
+        }
+        
+        .metrics-list li {
+            padding: 5px 0;
+            border-bottom: 1px dashed #ddd;
+        }
+        
+        .metrics-list li:last-child {
+            border-bottom: none;
+        }
+        
+        .metrics-section {
+            margin-bottom: 15px;
+        }
+        
+        .metrics-section h3 {
+            font-size: 16px;
+            margin-bottom: 8px;
+            color: #2c3e50;
+        }
+        
+        .view-3d-btn {
+            display: inline-block;
+            background-color: #2ecc71;
+            color: white;
+            text-decoration: none;
+            padding: 12px 24px;
+            border-radius: 4px;
+            font-weight: bold;
+            margin-top: 20px;
+            transition: background-color 0.3s;
+        }
+        
+        .view-3d-btn:hover {
+            background-color: #27ae60;
+        }
+        
+        .error-message {
+            background-color: #f8d7da;
+            color: #721c24;
+            padding: 10px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+            border-left: 4px solid #dc3545;
+        }
+    </style>
+</head>
+<body>
+    
+<a href="{% url 'recent_uploads' %}" class="view-3d-btn" style="background-color: #e67e22; margin-bottom: 20px; display: inline-block;">
+    &larr; Back to All Recents
+</a>
+
+
+{% if metrics %}
+    <div class="metrics-container">
+        <div class="metrics-title">Mesh Analysis Results</div>
+
+        <div class="metrics-section">
+            <h3>Basic Measurements</h3>
+            <ul class="metrics-list">
+                <li><strong>Mesh Volume:</strong> {{ metrics.mesh_volume|floatformat:4 }} mm³</li>
+                <li><strong>Mesh Surface Area:</strong> {{ metrics.mesh_area|floatformat:4 }} mm²</li>
+                <li><strong>Inscribed Radius:</strong> {{ metrics.inscribed_radius|floatformat:4 }} mm</li>
+            </ul>
+        </div>
+
+        <div class="metrics-section">
+            <h3>Convexity Analysis</h3>
+            <ul class="metrics-list">
+                <li><strong>Convex Hull Volume:</strong> {{ metrics.convex_hull_volume|floatformat:4 }} mm³</li>
+                <li><strong>Convex Hull Area:</strong> {{ metrics.convex_hull_area|floatformat:4 }} mm²</li>
+                <li><strong>Shape Factor Ratio:</strong> {{ metrics.shape_factor_ratio|floatformat:4 }}</li>
+            </ul>
+        </div>
+
+        {% load custom_filters %}
+
+        <div class="metrics-section">
+            <h3>Surface Curvature</h3>
+            <ul class="metrics-list">
+                <li><strong>Mean Roundness:</strong> {{ metrics.mean_roundness|floatformat:4 }}</li>
+                <li><strong>Concave Area:</strong> {{ metrics.concave_area|floatformat:4 }} mm² ({{ metrics.concave_ratio|floatformat:2|multiply:100 }}%)</li>
+                <li><strong>Convex Area:</strong> {{ metrics.convex_area|floatformat:4 }} mm² ({{ metrics.convex_ratio|floatformat:2|multiply:100 }}%)</li>
+                <li><strong>Flat Area:</strong> {{ metrics.flat_area|floatformat:4 }} mm²</li>
+                <li><strong>Highly Concave Area:</strong> {{ metrics.highly_concave_area|floatformat:4 }} mm²</li>
+                <li><strong>Highly Convex Area:</strong> {{ metrics.highly_convex_area|floatformat:4 }} mm²</li>
+            </ul>
+        </div>
+
+        <div class="metrics-section">
+            <h3>Weighted Metrics</h3>
+            <ul class="metrics-list">
+                <li><strong>Weighted Concave:</strong> {{ metrics.weighted_concave|floatformat:4 }}</li>
+                <li><strong>Weighted Convex:</strong> {{ metrics.weighted_convex|floatformat:4 }}</li>
+                <li><strong>Total Curved Area:</strong> {{ metrics.total_curved_area|floatformat:4 }} mm²</li>
+                <li><strong>Weighted Relative:</strong> {{ metrics.weighted_relative|floatformat:4 }}</li>
+            </ul>
+        </div>
+    </div>
+{% endif %}
+
+<a href="{% url 'view_stl_3d_recent' run_id=run_id file_type='input' %}" target="_blank" class="view-3d-btn">
+    View Input STL
+</a>
+
+<a href="{% url 'view_stl_3d_recent' run_id=run_id file_type='output' %}" target="_blank" class="view-3d-btn" style="background-color: #9b59b6;">
+    View Output PLY
+</a>
+
+
+</body>
+</html>

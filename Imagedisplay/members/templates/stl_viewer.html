@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>STL Viewer</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        
+        .container {
+            background-color: white;
+            border-radius: 8px;
+            padding: 30px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        h1 {
+            color: #2c3e50;
+            margin-top: 0;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 10px;
+        }
+        
+        .upload-form {
+            margin-bottom: 30px;
+        }
+        
+        .form-group {
+            margin-bottom: 15px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        
+        input[type="file"] {
+            border: 1px solid #ddd;
+            padding: 8px;
+            width: 100%;
+            border-radius: 4px;
+        }
+        
+        button {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s;
+        }
+        
+        button:hover {
+            background-color: #2980b9;
+        }
+        
+        .metrics-container {
+            background-color: #f9f9f9;
+            border-left: 4px solid #3498db;
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 0 4px 4px 0;
+        }
+        
+        .metrics-title {
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #2c3e50;
+        }
+        
+        .metrics-list {
+            list-style-type: none;
+            padding: 0;
+            margin: 0;
+        }
+        
+        .metrics-list li {
+            padding: 5px 0;
+            border-bottom: 1px dashed #ddd;
+        }
+        
+        .metrics-list li:last-child {
+            border-bottom: none;
+        }
+        
+        .metrics-section {
+            margin-bottom: 15px;
+        }
+        
+        .metrics-section h3 {
+            font-size: 16px;
+            margin-bottom: 8px;
+            color: #2c3e50;
+        }
+        
+        .view-3d-btn {
+            display: inline-block;
+            background-color: #2ecc71;
+            color: white;
+            text-decoration: none;
+            padding: 12px 24px;
+            border-radius: 4px;
+            font-weight: bold;
+            margin-top: 20px;
+            transition: background-color 0.3s;
+        }
+        
+        .view-3d-btn:hover {
+            background-color: #27ae60;
+        }
+        
+        .error-message {
+            background-color: #f8d7da;
+            color: #721c24;
+            padding: 10px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+            border-left: 4px solid #dc3545;
+        }
+    </style>
+    <script>
+        function showLoadingScreen() {
+            var div = document.getElementById("loading-wrapper");
+            div.style.display = "block";
+        }
+        
+        // Add this to your form
+        document.addEventListener('DOMContentLoaded', function() {
+            var form = document.querySelector('form');
+            form.addEventListener('submit', showLoadingScreen);
+        });
+    </script>
+    
+</head>
+<body>
+    <!-- Add this at the top of your body -->
+    <div id="loading-wrapper" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 9999; text-align: center;">
+        <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: white;">
+            <div class="spinner" style="border: 5px solid #f3f3f3; border-top: 5px solid #3498db; border-radius: 50%; width: 50px; height: 50px; margin: 0 auto; animation: spin 2s linear infinite;"></div>
+            <h2 style="margin-top: 20px;">Processing STL File...</h2>
+            <p>This may take 5-10 minutes depending on file complexity.</p>
+        </div>
+    </div>
+
+    <style>
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+
+    <div class="container">
+        <h1>STL File Viewer</h1>
+        {% load mathfilters %}
+          
+        <div class="upload-form">
+            <h2>Upload STL File</h2>
+            <form method="POST" enctype="multipart/form-data" onsubmit="showLoadingScreen()">
+
+                {% csrf_token %}
+                <div class="form-group">
+                    <h3>File Selection</h3>
+                    {{ upload_form.as_p }}
+                </div>
+                
+                <div class="form-group">
+                    <h3>Processing Options</h3>
+                    {{ process_form.as_p }}
+                </div>
+                
+                <button type="submit">Upload & Process</button>
+            </form>
+        </div>
+        
+        
+        {% if error %}
+            <div class="error-message">
+                <strong>Error:</strong> {{ error }}
+            </div>
+        {% endif %}
+        
+        {% if upload_success %}
+            <h2>File Information</h2>
+            <p><strong>Filename:</strong> {{ stl_filename }}</p>
+            
+            {% if metrics %}
+                <div class="metrics-container">
+                    <div class="metrics-title">Mesh Analysis Results</div>
+                    
+                    <div class="metrics-section">
+                        <h3>Basic Measurements</h3>
+                        <ul class="metrics-list">
+                            <li><strong>Mesh Volume:</strong> {{ metrics.mesh_volume|floatformat:4 }} mm³</li>
+                            <li><strong>Mesh Surface Area:</strong> {{ metrics.mesh_area|floatformat:4 }} mm²</li>
+                            <li><strong>Inscribed Radius:</strong> {{ metrics.inscribed_radius|floatformat:4 }} mm</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="metrics-section">
+                        <h3>Convexity Analysis</h3>
+                        <ul class="metrics-list">
+                            <li><strong>Convex Hull Volume:</strong> {{ metrics.convex_hull_volume|floatformat:4 }} mm³</li>
+                            <li><strong>Convex Hull Area:</strong> {{ metrics.convex_hull_area|floatformat:4 }} mm²</li>
+                            <li><strong>Shape Factor Ratio:</strong> {{ metrics.shape_factor_ratio|floatformat:4 }}</li>
+                        </ul>
+                    </div>
+                    {% load custom_filters %}
+                    
+                    <div class="metrics-section">
+                        <h3>Surface Curvature</h3>
+                        <ul class="metrics-list">
+                            <li><strong>Mean Roundness:</strong> {{ metrics.mean_roundness|floatformat:4 }}</li>
+                            <li><strong>Concave Area:</strong> {{ metrics.concave_area|floatformat:4 }} mm² ({{ metrics.concave_ratio|floatformat:2|multiply:100 }}%)</li>
+                            <li><strong>Convex Area:</strong> {{ metrics.convex_area|floatformat:4 }} mm² ({{ metrics.convex_ratio|floatformat:2|multiply:100 }}%)</li>
+                            <li><strong>Flat Area:</strong> {{ metrics.flat_area|floatformat:4 }} mm²</li>
+                            <li><strong>Highly Concave Area:</strong> {{ metrics.highly_concave_area|floatformat:4 }} mm²</li>
+                            <li><strong>Highly Convex Area:</strong> {{ metrics.highly_convex_area|floatformat:4 }} mm²</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="metrics-section">
+                        <h3>Weighted Metrics</h3>
+                        <ul class="metrics-list">
+                            <li><strong>Weighted Concave:</strong> {{ metrics.weighted_concave|floatformat:4 }}</li>
+                            <li><strong>Weighted Convex:</strong> {{ metrics.weighted_convex|floatformat:4 }}</li>
+                            <li><strong>Total Curved Area:</strong> {{ metrics.total_curved_area|floatformat:4 }} mm²</li>
+                            <li><strong>Weighted Relative:</strong> {{ metrics.weighted_relative|floatformat:4 }}</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="metrics-section">
+                        <h3>Bounding Spheres</h3>
+                        <ul class="metrics-list">
+                            <li><strong>Inscribed Sphere Area:</strong> {{ metrics.inscribed_sphere_area|floatformat:4 }} mm²</li>
+                            <li><strong>Circumsphere Volume:</strong> {{ metrics.circumsphere_volume|floatformat:4 }} mm³</li>
+                            <li><strong>Circumsphere Area:</strong> {{ metrics.circumsphere_area|floatformat:4 }} mm²</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="metrics-section">
+                        <h3>Iterative Terms</h3>
+                        <ul class="metrics-list">
+                            <li><strong>Iterative Term 1:</strong> {{ metrics.iterative_term1|floatformat:4 }}</li>
+                            <li><strong>Iterative Term 2:</strong> {{ metrics.iterative_term2|floatformat:4 }}</li>
+                            <li><strong>Iterative Term Ratio:</strong> {{ metrics.iterative_term_ratio|floatformat:4 }}</li>
+                            <li><strong>Iterative Term TC Ratio:</strong> {{ metrics.iterative_term_tc_ratio|floatformat:4 }}</li>
+                            <li><strong>Iterative Term NL Ratio:</strong> {{ metrics.iterative_term_nl_ratio|floatformat:4 }}</li>
+                        </ul>
+                    </div>
+                </div>
+                
+                <a href="{% url 'view_stl_3d' %}" class="view-3d-btn" target="_blank">
+                    Open 3D Viewer
+                </a>
+            {% endif %}
+        {% endif %}
+
+        <!-- Back to Home button -->
+        <div style="text-align: center; margin-top: 30px;">
+            <a href="{% url 'home' %}" 
+               style="
+                   display: inline-block; 
+                   background-color: #3498db; 
+                   color: white; 
+                   text-decoration: none; 
+                   padding: 10px 20px; 
+                   border-radius: 4px; 
+                   font-weight: bold; 
+                   transition: background-color 0.3s;
+               "
+               onmouseover="this.style.backgroundColor='#2980b9';"
+               onmouseout="this.style.backgroundColor='#3498db';"
+            >
+                ← Back to Home
+            </a>
+        </div>
+
+    </div>
+</body>
+</html>

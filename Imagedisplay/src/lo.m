@@ -1,0 +1,1 @@
+ki=rgb2gray('1 (1).jpg')

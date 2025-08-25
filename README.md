@@ -1,5 +1,3 @@
-# Design_credit
-
 Make sure you have MATLAB installed in your local device.
 
 ## Create Environment
